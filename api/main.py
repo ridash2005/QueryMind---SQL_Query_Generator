@@ -29,8 +29,8 @@ app = FastAPI(
 # Allow the Vite dev server and production frontend to call the API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=["*"],  # Restrict to specific origins in production (e.g. ["https://yourdomain.com"])
+    allow_credentials=False,  # Must be False when allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -37,7 +37,7 @@ class FactOrders(Base):
     order_total_usd = Column(Float, nullable=False, default=0.0)
     freight_value_usd = Column(Float, nullable=False, default=0.0)
     order_status = Column(String(32), nullable=False, default="unknown")
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow())
 
     user = relationship("DimUsers", back_populates="orders")
     product = relationship("DimProducts", back_populates="orders")
@@ -110,4 +110,4 @@ class QueryLog(Base):
     latency_ms = Column(Integer, nullable=True)
     tables_used = Column(Text, nullable=True)  # comma-separated list
     error = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow())

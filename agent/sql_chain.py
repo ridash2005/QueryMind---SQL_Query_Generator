@@ -44,6 +44,21 @@ logger = logging.getLogger(__name__)
 
 _YAML_PATH = os.path.join(os.path.dirname(__file__), "few_shot_examples.yaml")
 
+# Module-level LLM instance — reuses the underlying HTTP connection pool
+# across all requests instead of creating a new client per query.
+_llm: ChatOpenAI | None = None
+
+
+def _get_llm() -> ChatOpenAI:
+    global _llm
+    if _llm is None:
+        _llm = ChatOpenAI(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            temperature=0,
+            api_key=os.getenv("OPENAI_API_KEY", ""),
+        )
+    return _llm
+
 SYSTEM_PROMPT = """You are an expert SQL analyst for the Olist Brazilian E-Commerce database.
 
 Your task: Given a natural-language question, write a single, correct SQL SELECT query.
@@ -184,12 +199,8 @@ async def run_query(question: str) -> dict[str, Any]:
             ]
         )
 
-        # Step 4: Initialise LLM (temperature=0 for deterministic SQL)
-        llm = ChatOpenAI(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
-            temperature=0,
-            api_key=os.getenv("OPENAI_API_KEY", ""),
-        )
+        # Step 4: Get cached LLM instance (temperature=0 for deterministic SQL)
+        llm = _get_llm()
 
         # Step 5: Build LCEL chain: prompt | llm | str parser
         chain = prompt | llm | StrOutputParser()
