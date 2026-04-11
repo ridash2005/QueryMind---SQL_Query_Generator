@@ -1,27 +1,27 @@
-# Text-to-SQL
+# 🧠 Text-to-SQL
 
-Ask a question in plain English. Get back a SQL query and real results from the database. No SQL knowledge required.
+💬 Ask a question in plain English. 🔍 Get back a SQL query and real results from the database. No SQL knowledge required.
 
 > **Audience:** No prior knowledge of LLMs or vector databases is assumed.
 
 ---
 
-## Table of Contents
+## 📚 Table of Contents
 
-1. [What Does This Project Do?](#1-what-does-this-project-do)
-2. [The Problem With "Typical" Text-to-SQL](#2-the-problem-with-typical-text-to-sql)
-3. [How This Project Solves It](#3-how-this-project-solves-it)
-4. [High-Level Architecture](#4-high-level-architecture)
-5. [Step-by-Step: How a Query Works](#5-step-by-step-how-a-query-works)
-6. [What It Can (and Cannot) Do](#6-what-it-can-and-cannot-do)
-7. [Project Structure](#7-project-structure)
-8. [Database Schema](#8-database-schema)
-9. [Quick Start](#9-quick-start)
-10. [Environment Variables](#10-environment-variables)
+1. [🤔 What Does This Project Do?](#1-what-does-this-project-do)
+2. [😬 The Problem With "Typical" Text-to-SQL](#2-the-problem-with-typical-text-to-sql)
+3. [🛠️ How This Project Solves It](#3-how-this-project-solves-it)
+4. [🏗️ High-Level Architecture](#4-high-level-architecture)
+5. [🔄 Step-by-Step: How a Query Works](#5-step-by-step-how-a-query-works)
+6. [✅ What It Can (and Cannot) Do](#6-what-it-can-and-cannot-do)
+7. [📁 Project Structure](#7-project-structure)
+8. [🗄️ Database Schema](#8-database-schema)
+9. [🚀 Quick Start](#9-quick-start)
+10. [⚙️ Environment Variables](#10-environment-variables)
 
 ---
 
-## 1. What Does This Project Do?
+## 1. 🤔 What Does This Project Do?
 
 This system lets a non-technical user type a question like:
 
@@ -29,40 +29,40 @@ This system lets a non-technical user type a question like:
 
 …and automatically:
 
-1. Figures out which database tables are relevant to the question.
-2. Asks an LLM (GPT-4o) to write the correct SQL query.
-3. Runs that SQL against a real database (Olist Brazilian E-Commerce dataset).
-4. Returns the results in a clean table in the browser.
+1. 🗺️ Figures out which database tables are relevant to the question.
+2. ✍️ Asks an LLM (GPT-4o) to write the correct SQL query.
+3. ⚡ Runs that SQL against a real database (Olist Brazilian E-Commerce dataset).
+4. 📊 Returns the results in a clean table in the browser.
 
 The underlying database is a **star-schema** data warehouse built on the [Olist public dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce), which contains real Brazilian e-commerce orders, products, sellers, customers, and reviews.
 
 ---
 
-## 2. The Problem With "Typical" Text-to-SQL
+## 2. 😬 The Problem With "Typical" Text-to-SQL
 
 When someone first tries to build a text-to-SQL system, the obvious approach is usually:
 
 > *"I'll just paste the entire database schema into the LLM prompt and ask it to write a query."*
 
-This works fine for toy databases with 3–4 tables. In the real world, it breaks down fast:
+This works fine for toy databases with 3–4 tables. In the real world, it breaks down fast 💥:
 
 | Problem | Why it happens |
 |---|---|
-| **Context window overflow** | A real warehouse can have 50–200 tables. The full schema — table names, column names, types, foreign keys — can easily exceed the LLM's context limit (even GPT-4o's 128k tokens). |
-| **Noise drowns out signal** | Even if it fits, flooding the prompt with irrelevant tables confuses the model. It might join to the wrong table or use the wrong column because it's overwhelmed. |
-| **Business meaning is lost** | Column names like `order_total_usd` or `is_active_member` don't tell the LLM *how* to use them correctly. Should `order_total_usd` be summed or averaged? Should you filter on `order_status = 'delivered'` first? The schema alone doesn't say. |
-| **Hallucinated SQL** | Without enough context, the LLM invents column names or table relationships that don't exist, producing queries that fail at runtime. |
-| **No safety guardrails** | A naive implementation has no check to stop the LLM from generating `DELETE` or `DROP TABLE` statements if the user's question is phrased ambiguously. |
+| 🌊 **Context window overflow** | A real warehouse can have 50–200 tables. The full schema — table names, column names, types, foreign keys — can easily exceed the LLM's context limit (even GPT-4o's 128k tokens). |
+| 📢 **Noise drowns out signal** | Even if it fits, flooding the prompt with irrelevant tables confuses the model. It might join to the wrong table or use the wrong column because it's overwhelmed. |
+| 🔍 **Business meaning is lost** | Column names like `order_total_usd` or `is_active_member` don't tell the LLM *how* to use them correctly. Should `order_total_usd` be summed or averaged? Should you filter on `order_status = 'delivered'` first? The schema alone doesn't say. |
+| 👻 **Hallucinated SQL** | Without enough context, the LLM invents column names or table relationships that don't exist, producing queries that fail at runtime. |
+| 🚨 **No safety guardrails** | A naive implementation has no check to stop the LLM from generating `DELETE` or `DROP TABLE` statements if the user's question is phrased ambiguously. |
 
-**This project solves all of these problems.**
+**This project solves all of these problems. 🎯**
 
 ---
 
-## 3. How This Project Solves It
+## 3. 🛠️ How This Project Solves It
 
 Instead of dumping the whole schema into the prompt, we use three key techniques:
 
-### Technique 1: Semantic Layer (the "data dictionary")
+### 📖 Technique 1: Semantic Layer (the "data dictionary")
 
 Every table and column is annotated with business-friendly descriptions in [`agent/semantic_layer.py`](agent/semantic_layer.py). For example:
 
@@ -72,28 +72,28 @@ order_total_usd: "Final post-tax revenue in USD for this line item.
                   Never use freight_value_usd as a revenue proxy."
 ```
 
-This tells the LLM *how* to use each column, not just *what type* it is. Think of it as a data dictionary that the LLM reads before writing SQL.
+This tells the LLM *how* to use each column, not just *what type* it is. Think of it as a data dictionary that the LLM reads before writing SQL. 📚
 
-### Technique 2: RAG — Retrieval-Augmented Generation
+### 🔎 Technique 2: RAG — Retrieval-Augmented Generation
 
 Instead of sending all table descriptions at once, we:
 
-1. **At startup:** Embed every table description into a vector database (ChromaDB) using OpenAI embeddings. Each table becomes a point in high-dimensional space.
-2. **At query time:** Embed the user's question using the same embedding model. Find the 3 most *semantically similar* table descriptions using cosine similarity. Inject *only those 3 tables* into the LLM prompt.
+1. **At startup:** Embed every table description into a vector database (ChromaDB) using OpenAI embeddings. Each table becomes a point in high-dimensional space. 📌
+2. **At query time:** Embed the user's question using the same embedding model. Find the 3 most *semantically similar* table descriptions using cosine similarity. Inject *only those 3 tables* into the LLM prompt. 🎯
 
-The user asks about "revenue by category" → we retrieve `fact_orders` and `dim_products` → the LLM only sees those two tables → cleaner, more accurate SQL.
+The user asks about "revenue by category" → we retrieve `fact_orders` and `dim_products` → the LLM only sees those two tables → cleaner, more accurate SQL. ✨
 
-### Technique 3: Few-Shot Examples
+### 💡 Technique 3: Few-Shot Examples
 
 The prompt includes curated question→SQL example pairs (stored in [`agent/few_shot_examples.yaml`](agent/few_shot_examples.yaml)). These teach the LLM the exact SQL dialect, join patterns, and aggregation idioms expected for *this specific database*, acting as in-context learning.
 
-### Technique 4: HITL Safety Guard
+### 🛡️ Technique 4: HITL Safety Guard
 
-Before any SQL is executed, a Human-In-The-Loop (HITL) guard scans for dangerous keywords (`INSERT`, `UPDATE`, `DELETE`, `DROP`, etc.). If found, execution is blocked and the user must explicitly type `CONFIRM` in a modal before anything runs. Pure `SELECT` queries pass through automatically.
+Before any SQL is executed, a Human-In-The-Loop (HITL) guard scans for dangerous keywords (`INSERT`, `UPDATE`, `DELETE`, `DROP`, etc.). If found, execution is blocked and the user must explicitly type `CONFIRM` in a modal before anything runs. Pure `SELECT` queries pass through automatically. 🔒
 
 ---
 
-## 4. High-Level Architecture
+## 4. 🏗️ High-Level Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -156,65 +156,65 @@ Before any SQL is executed, a Human-In-The-Loop (HITL) guard scans for dangerous
 
 ---
 
-## 5. Step-by-Step: How a Query Works
+## 5. 🔄 Step-by-Step: How a Query Works
 
 Here is exactly what happens when a user types *"Which states have the most canceled orders?"* and hits Enter:
 
-**Step 1 — Embed the question**
+**Step 1 → Embed the question 🔢**
 The question is converted to a 1536-dimension vector using OpenAI's `text-embedding-3-small` model.
 
-**Step 2 — Retrieve relevant schema (RAG)**
+**Step 2 → Retrieve relevant schema (RAG) 🗂️**
 ChromaDB compares the question vector against all stored table description vectors and returns the 3 closest matches — in this case `fact_orders` (has `order_status`) and `dim_users` (has `state`).
 
-**Step 3 — Build the prompt**
+**Step 3 → Build the prompt 📝**
 A `ChatPromptTemplate` is assembled with:
 - A system message containing the retrieved table schemas and a few Q→SQL examples.
 - A user message containing the question.
 
-**Step 4 — Ask GPT-4o**
+**Step 4 → Ask GPT-4o 🤖**
 The prompt is sent to GPT-4o with `temperature=0` (fully deterministic — no creative variation in SQL). The model returns a raw SQL string.
 
-**Step 5 — Clean the SQL**
+**Step 5 → Clean the SQL 🧹**
 A small regex function strips any markdown code fences (` ```sql `) or stray labels that the model might have included.
 
-**Step 6 — HITL safety check**
+**Step 6 → HITL safety check 🛡️**
 The SQL is scanned for dangerous keywords. This is a `SELECT` query, so it passes automatically.
 
-**Step 7 — Execute the SQL**
+**Step 7 → Execute the SQL ⚡**
 The query runs against the SQLite database. A `LIMIT 1000` clause is injected automatically if not already present, so the response stays manageable.
 
-**Step 8 — Log and return**
+**Step 8 → Log and return 📦**
 The question, generated SQL, latency, and tables used are written to the `query_log` table for observability. The API returns `{sql, results, latency_ms}` to the frontend.
 
-**Step 9 — Display in the browser**
+**Step 9 → Display in the browser 🖥️**
 React renders the SQL in a syntax-highlighted box and the results as a pageable table.
 
 ---
 
-## 6. What It Can (and Cannot) Do
+## 6. ✅ What It Can (and Cannot) Do
 
 ### ✅ Can Do
 
-- Answer any analytical question about the Olist e-commerce dataset in plain English.
-- Revenue analysis: total, by category, by seller, by month, by state.
-- Customer analysis: active members, geographic distribution, top spenders, cohorts.
-- Seller analysis: rankings, geographic distribution, freight costs.
-- Order analysis: status breakdown, cancellation rates, monthly trends.
-- Review/NPS analysis: average scores by category, complaint rates.
-- Complex queries: multi-table joins, CTEs (`WITH` clauses), window functions.
-- Explain what SQL it generated and why.
-- Block dangerous write operations and ask for human confirmation.
+- 💬 Answer any analytical question about the Olist e-commerce dataset in plain English.
+- 💰 Revenue analysis: total, by category, by seller, by month, by state.
+- 👥 Customer analysis: active members, geographic distribution, top spenders, cohorts.
+- 🏪 Seller analysis: rankings, geographic distribution, freight costs.
+- 📦 Order analysis: status breakdown, cancellation rates, monthly trends.
+- ⭐ Review/NPS analysis: average scores by category, complaint rates.
+- 🔀 Complex queries: multi-table joins, CTEs (`WITH` clauses), window functions.
+- 🗣️ Explain what SQL it generated and why.
+- 🚧 Block dangerous write operations and ask for human confirmation.
 
 ### ❌ Cannot Do
 
-- Modify data (INSERT/UPDATE/DELETE) without explicit human approval via the confirmation modal.
-- Query tables or columns outside the defined semantic schema.
-- Answer questions about data that isn't in the Olist dataset (e.g., live stock prices).
-- Guarantee 100% correct SQL for every possible question — LLM output is probabilistic. Always review the generated SQL before trusting results.
+- 🚫 Modify data (INSERT/UPDATE/DELETE) without explicit human approval via the confirmation modal.
+- 🔒 Query tables or columns outside the defined semantic schema.
+- 🌐 Answer questions about data that isn't in the Olist dataset (e.g., live stock prices).
+- 🎲 Guarantee 100% correct SQL for every possible question — LLM output is probabilistic. Always review the generated SQL before trusting results.
 
 ---
 
-## 7. Project Structure
+## 7. 📁 Project Structure
 
 ```
 text-to-sql/
@@ -261,9 +261,9 @@ text-to-sql/
 
 ---
 
-## 8. Database Schema
+## 8. 🗄️ Database Schema
 
-The database uses a **star schema** — a design pattern common in data warehouses where one central "fact" table holds measurable events, and multiple "dimension" tables hold descriptive attributes.
+The database uses a **star schema** — a design pattern common in data warehouses where one central "fact" table holds measurable events, and multiple "dimension" tables hold descriptive attributes. ⭐
 
 ```
                     ┌─────────────┐
@@ -295,13 +295,13 @@ The database uses a **star schema** — a design pattern common in data warehous
 
 ---
 
-## 9. Quick Start
+## 9. 🚀 Quick Start
 
 ### Prerequisites
 
-- Python 3.11+
-- Node.js 18+
-- An OpenAI API key
+- 🐍 Python 3.11+
+- 🟢 Node.js 18+
+- 🔑 An OpenAI API key
 
 ### 1. Clone and install Python dependencies
 
@@ -315,10 +315,10 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env and set your OPENAI_API_KEY
+# ✏️ Edit .env and set your OPENAI_API_KEY
 ```
 
-### 3. Seed the database
+### 3. Seed the database 🌱
 
 Download the raw Olist CSVs into `data/raw/` (see Kaggle link in [What Does This Project Do?](#1-what-does-this-project-do)), then run:
 
@@ -326,7 +326,7 @@ Download the raw Olist CSVs into `data/raw/` (see Kaggle link in [What Does This
 python -m data.seed
 ```
 
-### 4. Build the vector index
+### 4. Build the vector index 🔢
 
 This embeds all table descriptions into ChromaDB. Run once, or re-run whenever you update `semantic_layer.py`:
 
@@ -334,13 +334,13 @@ This embeds all table descriptions into ChromaDB. Run once, or re-run whenever y
 python -m agent.build_index
 ```
 
-### 5. Start the API server
+### 5. Start the API server 🖥️
 
 ```bash
 uvicorn api.main:app --reload --port 8000
 ```
 
-### 6. Start the frontend
+### 6. Start the frontend 🎨
 
 ```bash
 cd frontend
@@ -348,11 +348,11 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser and start asking questions.
+Open [http://localhost:5173](http://localhost:5173) in your browser and start asking questions! 🎉
 
 ---
 
-## 10. Environment Variables
+## 10. ⚙️ Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
