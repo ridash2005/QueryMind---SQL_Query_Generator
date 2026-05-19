@@ -45,8 +45,10 @@ export default function Navbar() {
     setUploadProgress(0)
 
     try {
-      // Need to set API URL first if they changed it, so upload goes to the right place
+      // Need to save settings first so the interceptor picks up the latest API key and URL
       setApiUrl(apiUrlInput)
+      setApiKey(apiKeyInput)
+      
       const res = await uploadDatabase(file, (pct) => setUploadProgress(pct))
       if (res.success) {
         setUploadSuccess(res.message || 'Database uploaded and indexed successfully!')

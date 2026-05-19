@@ -45,8 +45,15 @@ async def query_endpoint(
     Write operations require explicit approval via /api/approve.
     """
     try:
+        import os
+        if not x_openai_key and not os.getenv("OPENAI_API_KEY"):
+            raise ValueError("OpenAI API Key is missing. Please add it in the Settings panel.")
+            
         result = await run_query(request.question, api_key=x_openai_key)
         return QueryResponse(**result)
+    except ValueError as ve:
+        logger.warning("Validation error: %s", ve)
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as exc:
         logger.error("Query endpoint error: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc))

@@ -48,6 +48,12 @@ export default function ChatWindow({ messages, setMessages, onAnswer, injectedQu
       onAnswer(response)
     } catch (err: any) {
       let errMsg = err instanceof Error ? err.message : String(err)
+      
+      // Extract backend detail if available
+      if (err.response?.data?.detail) {
+        errMsg = err.response.data.detail
+      }
+
       if (errMsg.includes('405') || errMsg.includes('404') || errMsg.includes('Network Error')) {
         errMsg = "Failed to connect to the backend. If you are on GitHub Pages, click the ⚙️ Settings icon in the top right to configure your local Backend API URL (e.g., http://localhost:8000)."
       }

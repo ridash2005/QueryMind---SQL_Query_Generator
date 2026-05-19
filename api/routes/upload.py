@@ -32,7 +32,7 @@ async def upload_database(
             shutil.copyfileobj(file.file, buffer)
             
         # Update database engine
-        set_engine_url(f"sqlite:///{file_path}")
+        set_engine_url("sqlite:///./data/uploaded.db")
         
         # Connect and extract tables
         conn = sqlite3.connect(file_path)
