@@ -260,6 +260,7 @@ input, textarea {
   mask-composite: exclude;
   opacity: 0;
   transition: opacity 0.4s var(--ease-out);
+  pointer-events: none;
 }
 
 .qm-glass-card:hover::before {
