@@ -40,6 +40,13 @@ def get_engine() -> Engine:
     return _engine
 
 
+def set_engine_url(url: str) -> None:
+    """Update the active database URL and reset connection pools."""
+    global _engine, _SessionLocal
+    os.environ["DATABASE_URL"] = url
+    _engine = None
+    _SessionLocal = None
+
 def get_session() -> Session:
     """Return a new Session bound to the shared engine.
 

@@ -1,14 +1,26 @@
-import { useState, useEffect } from 'react'
-import { getApiUrl, setApiUrl } from '../api'
+import { useState, useEffect, useRef } from 'react'
+import { getApiUrl, setApiUrl, getApiKey, setApiKey, uploadDatabase } from '../api'
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  
   const [apiUrlInput, setApiUrlInput] = useState(getApiUrl() || 'http://localhost:8000')
+  const [apiKeyInput, setApiKeyInput] = useState(getApiKey())
+  
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadSuccess, setUploadSuccess] = useState('')
+  const [uploadError, setUploadError] = useState('')
+  
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const saveSettings = () => {
     setApiUrl(apiUrlInput)
+    setApiKey(apiKeyInput)
     setShowSettings(false)
+    setUploadSuccess('')
+    setUploadError('')
   }
 
   useEffect(() => {
@@ -22,6 +34,34 @@ export default function Navbar() {
     { label: 'Architecture', href: '#architecture' },
     { label: 'Playground', href: '#playground' },
   ]
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    setUploadError('')
+    setUploadSuccess('')
+    setUploadProgress(0)
+
+    try {
+      // Need to set API URL first if they changed it, so upload goes to the right place
+      setApiUrl(apiUrlInput)
+      const res = await uploadDatabase(file, (pct) => setUploadProgress(pct))
+      if (res.success) {
+        setUploadSuccess(res.message || 'Database uploaded and indexed successfully!')
+      } else {
+        setUploadError('Upload failed.')
+      }
+    } catch (err: any) {
+      setUploadError(err.message || 'Failed to upload database.')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
 
   return (
     <nav style={{
@@ -140,14 +180,15 @@ export default function Navbar() {
           justifyContent: 'center',
           zIndex: 1000,
         }}>
-          <div className="qm-glass-card" style={{ width: '400px', padding: '30px' }}>
-            <h3 style={{ marginBottom: '10px' }}>Backend Connection</h3>
+          <div className="qm-glass-card" style={{ width: '450px', padding: '30px' }}>
+            <h3 style={{ marginBottom: '10px' }}>Settings & Connections</h3>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: 1.5 }}>
-              GitHub Pages is a static host. To use the chat playground, you must run the FastAPI backend locally with your OpenAI API Key and data, then connect the frontend to it.
+              Configure your backend connection, API key, and upload custom databases.
             </p>
-            <div style={{ marginBottom: '20px' }}>
+            
+            <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px', color: 'var(--text-tertiary)' }}>
-                API Base URL
+                Local Backend API URL
               </label>
               <input
                 type="text"
@@ -167,11 +208,74 @@ export default function Navbar() {
                 }}
               />
             </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px', color: 'var(--text-tertiary)' }}>
+                OpenAI API Key
+              </label>
+              <input
+                type="password"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                placeholder="sk-..."
+                style={{
+                  width: '100%',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)',
+                  padding: '10px 14px',
+                  borderRadius: '6px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '13px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px', color: 'var(--text-tertiary)' }}>
+                Upload Custom Database (.db / .sqlite)
+              </label>
+              <input
+                type="file"
+                accept=".db,.sqlite"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                disabled={uploading}
+                style={{
+                  width: '100%',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)',
+                  padding: '10px 14px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  boxSizing: 'border-box'
+                }}
+              />
+              {uploading && (
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  Uploading and indexing... {uploadProgress}%
+                </div>
+              )}
+              {uploadSuccess && (
+                <div style={{ fontSize: '12px', color: '#10b981', marginTop: '8px' }}>
+                  {uploadSuccess}
+                </div>
+              )}
+              {uploadError && (
+                <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '8px' }}>
+                  {uploadError}
+                </div>
+              )}
+            </div>
+
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setShowSettings(false)}
                 className="qm-btn-secondary"
                 style={{ padding: '8px 16px' }}
+                disabled={uploading}
               >
                 Cancel
               </button>
@@ -179,6 +283,7 @@ export default function Navbar() {
                 onClick={saveSettings}
                 className="qm-btn-primary"
                 style={{ padding: '8px 16px' }}
+                disabled={uploading}
               >
                 Save Settings
               </button>

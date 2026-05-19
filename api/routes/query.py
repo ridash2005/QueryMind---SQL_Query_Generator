@@ -6,7 +6,7 @@ import asyncio
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel, Field
 
 from agent.hitl_guard import check_sql
@@ -15,10 +15,8 @@ from agent.sql_chain import _execute_sql, _extract_table_names, _log_query, run_
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["query"])
 
-
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1, description="Natural-language question to convert to SQL")
-
 
 class QueryResponse(BaseModel):
     sql: str
@@ -28,26 +26,26 @@ class QueryResponse(BaseModel):
     approval_reason: str = ""
     latency_ms: int
 
-
 class ApproveRequest(BaseModel):
     sql: str = Field(..., min_length=1)
     approved: bool
-
 
 class ApproveResponse(BaseModel):
     executed: bool
     results: list[dict[str, Any]]
     message: str
 
-
 @router.post("/query", response_model=QueryResponse)
-async def query_endpoint(request: QueryRequest) -> QueryResponse:
+async def query_endpoint(
+    request: QueryRequest,
+    x_openai_key: str | None = Header(None)
+) -> QueryResponse:
     """
     Convert a natural-language question to SQL and execute it.
     Write operations require explicit approval via /api/approve.
     """
     try:
-        result = await run_query(request.question)
+        result = await run_query(request.question, api_key=x_openai_key)
         return QueryResponse(**result)
     except Exception as exc:
         logger.error("Query endpoint error: %s", exc, exc_info=True)

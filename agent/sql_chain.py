@@ -49,14 +49,21 @@ _YAML_PATH = os.path.join(os.path.dirname(__file__), "few_shot_examples.yaml")
 _llm: ChatOpenAI | None = None
 
 
-def _get_llm() -> ChatOpenAI:
-    global _llm
-    if _llm is None:
-        _llm = ChatOpenAI(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
-            temperature=0,
-            api_key=os.getenv("OPENAI_API_KEY", ""),
-        )
+_last_llm_key: str | None = None
+
+def _get_llm(api_key: str | None = None) -> ChatOpenAI:
+    global _llm, _last_llm_key
+    current_key = api_key or os.getenv("OPENAI_API_KEY", "")
+    
+    if _llm is not None and _last_llm_key == current_key:
+        return _llm
+        
+    _llm = ChatOpenAI(
+        model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+        temperature=0,
+        api_key=current_key,
+    )
+    _last_llm_key = current_key
     return _llm
 
 SYSTEM_PROMPT = """You are an expert SQL analyst for the Olist Brazilian E-Commerce database.
@@ -193,7 +200,7 @@ def _execute_sql(sql: str) -> list[dict[str, Any]]:
         return [dict(zip(columns, row)) for row in rows]
 
 
-async def run_query(question: str) -> dict[str, Any]:
+async def run_query(question: str, api_key: str | None = None) -> dict[str, Any]:
     """
     Full LCEL pipeline: natural-language question → SQL → executed results.
 
@@ -213,7 +220,7 @@ async def run_query(question: str) -> dict[str, Any]:
 
     try:
         # Step 1: Retrieve relevant schema snippets via RAG
-        schema_context = get_relevant_schema(question, k=3)
+        schema_context = get_relevant_schema(question, k=3, api_key=api_key)
 
         # Step 2: Load few-shot examples
         few_shot = _load_few_shot_examples()
@@ -227,7 +234,7 @@ async def run_query(question: str) -> dict[str, Any]:
         )
 
         # Step 4: Get cached LLM instance (temperature=0 for deterministic SQL)
-        llm = _get_llm()
+        llm = _get_llm(api_key=api_key)
 
         # Step 5: Build LCEL chain: prompt | llm | str parser
         chain = prompt | llm | StrOutputParser()

@@ -30,29 +30,34 @@ _client: Optional[chromadb.PersistentClient] = None
 _collection: Optional[chromadb.Collection] = None
 
 
-def _get_collection() -> chromadb.Collection:
-    """Lazily initialise and cache the ChromaDB collection."""
-    global _client, _collection
-    if _collection is not None:
+_last_api_key: Optional[str] = None
+
+def _get_collection(api_key: str | None = None) -> chromadb.Collection:
+    """Lazily initialise and cache the ChromaDB collection. Reinitialize if api_key changes."""
+    global _client, _collection, _last_api_key
+    
+    current_key = api_key or os.getenv("OPENAI_API_KEY", "")
+    
+    if _collection is not None and _last_api_key == current_key:
         return _collection
 
     persist_dir = os.getenv("CHROMA_PERSIST_DIR", "./chroma_store")
     embedding_model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-    openai_api_key = os.getenv("OPENAI_API_KEY", "")
 
     _client = chromadb.PersistentClient(path=persist_dir)
     embedding_fn = OpenAIEmbeddingFunction(
-        api_key=openai_api_key,
+        api_key=current_key,
         model_name=embedding_model,
     )
     _collection = _client.get_collection(
         name=COLLECTION_NAME,
         embedding_function=embedding_fn,
     )
+    _last_api_key = current_key
     return _collection
 
 
-def get_relevant_schema(query: str, k: int = 3) -> str:
+def get_relevant_schema(query: str, k: int = 3, api_key: str | None = None) -> str:
     """
     Embed *query*, similarity-search ChromaDB, and return a formatted
     table+column block suitable for injection into an LLM prompt.
@@ -60,12 +65,13 @@ def get_relevant_schema(query: str, k: int = 3) -> str:
     Args:
         query: The user's natural-language question.
         k:     Number of most relevant tables to retrieve.
+        api_key: Dynamic OpenAI API Key.
 
     Returns:
         A newline-delimited schema block string.
     """
     try:
-        collection = _get_collection()
+        collection = _get_collection(api_key)
         collection_count = collection.count()
         if collection_count == 0:
             logger.debug("Schema collection is empty; returning empty context for query: %s", query)
